@@ -1,0 +1,58 @@
+flowchart TD
+    subgraph Platform Vendor
+        platform-uCode[[CPU microcode\n+embedded uSWID]]
+        platform-FSP[[FSP/AGESA/OpenSIL\n+embedded uSWID]]
+        platform-CSME[[CSME/PSP\n+embedded uSWID]]
+        platform-GbE[[GbE\n+uSWID]]
+        platform-vex{{CPU Microcode VEX\nFSP/AGESA VEX\nCSME/PSP VEX}}
+    end
+    subgraph BIOS Vendor
+        ibv-BIOS-vex{{Source Code VEX}}
+        ibv-BIOS-src[Source Code\n+SPDX metadata]
+    end
+    subgraph ODM or OEM
+        oem-dxes[[EFI Binaries\n+coSWID]]
+        oem-BIOS-ifd[[BIOS Partition\n+uSWID]]
+        oem-build-sbom(Build-time SBOM)
+        oem-build-vex{{Source Code VEX}}
+        oem-SPI-rom[[Firmware ROM Image\n+embedded uSWID\n+Optional defragmented SBOM]]
+        oem-sbom(Exported SBOM\nSPDX, CycloneDX etc)
+    end
+    subgraph LVFS Webservice
+        lvfs-cap[[Firmware Capsule]]
+        lvfs-sbom(SBOM Report)
+    end
+    subgraph Local User
+        local-SPI-dump[[SPI Chip\n+embedded uSWID]]
+        local-SPI-sbom(SPI SBOM)
+        local-vulns(System Vulnerability Report)
+        local-sbom(Platform SBOM)
+    end
+
+    platform-FSP ---> oem-BIOS-ifd
+    platform-uCode ---> oem-BIOS-ifd
+    ibv-BIOS-src -- $$ --> oem-dxes
+    oem-dxes --> oem-BIOS-ifd
+
+    oem-BIOS-ifd ---> oem-SPI-rom
+    platform-CSME ---> oem-SPI-rom
+    platform-GbE ---> oem-SPI-rom
+    oem-BIOS-ifd -- firmware build tool --> oem-build-sbom
+
+    local-SPI-dump -- "extractor" --> local-SPI-sbom
+    platform-vex -.-> local-vulns
+    platform-vex -.-> lvfs-sbom
+    local-SPI-sbom -.-> local-vulns
+    oem-build-vex -.- $$? -.-> local-vulns
+    oem-build-sbom ---> oem-sbom
+    lvfs-sbom -.-> local-vulns
+    lvfs-cap --> lvfs-sbom
+    lvfs-cap ---> local-SPI-dump
+    oem-build-sbom ---> oem-build-vex
+    ibv-BIOS-vex -- "$$" --> oem-build-vex
+
+    oem-sbom -.-> local-sbom
+    local-sbom -.-> local-vulns
+
+    oem-SPI-rom ---> lvfs-cap
+
