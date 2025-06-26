@@ -1,0 +1,1 @@
+# Firmware Embedded SBOM Specification
