@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Firmware Embedded SBOM Specification unknown-rev documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+    <script src="_static/documentation_options.js?v=1ee4d5a6"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="firmware-embedded-sbom-specification-0-10">
+<h1>Firmware Embedded SBOM Specification 0.10<a class="headerlink" href="#firmware-embedded-sbom-specification-0-10" title="Link to this heading">¶</a></h1>
+<div class="toctree-wrapper compound">
+<span id="document-acknowledgements"></span><section id="acknowledgements">
+<h2><span class="section-number">1. </span>Acknowledgements<a class="headerlink" href="#acknowledgements" title="Link to this heading">¶</a></h2>
+<p>The Firmware Embedded SBOM Specification was developed in 2024 by Richard Hughes (Red Hat),
+Martin Fernandez (Eclypsium) and Adam Williamson (Red Hat).</p>
+<p>Many thanks should also go to the UEFI SBOM Sub Team for all thier support in the creation of this document.</p>
+</section>
+<span id="document-revhistory"></span><section id="revision-history">
+<h2><span class="section-number">2. </span>Revision History<a class="headerlink" href="#revision-history" title="Link to this heading">¶</a></h2>
+<table class="docutils align-default" id="id2">
+<caption><span class="caption-number">Table 2.1 </span><span class="caption-text">Revision History</span><a class="headerlink" href="#id2" title="Link to this table">¶</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Revision</p></th>
+<th class="head"><p>Date</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>0.10</p></td>
+<td><p>2024-FEB-21</p></td>
+<td><p>Initial prerelease version. Imported text from LVFS.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<span id="document-introduction"></span><section id="introduction">
+<span id="chapter-introduction"></span><h2><span class="section-number">3. </span>Introduction<a class="headerlink" href="#introduction" title="Link to this heading">¶</a></h2>
+<section id="purpose-and-scope">
+<h3><span class="section-number">3.1. </span>Purpose and Scope<a class="headerlink" href="#purpose-and-scope" title="Link to this heading">¶</a></h3>
+<p>Due to the increasing number of high-profile supply chain attacks, it has become more important to
+record information about critical software such as system and peripheral firmware.
+For US companies, <a class="reference external" href="https://www.nist.gov/itl/executive-order-14028-improving-nations-cybersecurity">Executive Order 14028</a>
+“Improving the Nation’s Cybersecurity” and the <a class="reference external" href="https://www.fcc.gov/cybersecurity-certification-mark">Cyber Trust Mark</a>
+now make providing an SBOM with this information a legal obligation for many companies.</p>
+<p>It has traditionally been difficult to build firmware or platform SBOMs for systems due to the
+involvement of three separate entities: the <em>Firmware Vendor</em> that produces the bulk of the <em>source code</em>,
+the ODM (Original Design Manufacturer) that compiles it with other additional code and adds additional
+binaries, and the OEM (Original Equipment Manufacturer) that may add their own extensions and then
+distributes the firmware.</p>
+<p>Most consumer laptop and desktop devices also have many other firmware blobs of firmware supplied for
+factory burn-in, e.g. fingerprint reader, SD card reader, touchpad, PCI retimer, Synaptics MST,
+Intel Thunderbolt, and many more – and these might not have any communication channel to the system
+firmware at all.</p>
+<p>End-users do not buy “firmware” and any firmware deliverable will normally be included in a larger
+OEM per-device <em>platform SBOM</em>.
+At the same time, we also need to provide access to the runtime “current firmware SBOM” so that we
+can use newer technologies such as <a class="reference external" href="https://www.cisa.gov/sites/default/files/publications/VEX_Use_Cases_Document_508c.pdf">VEX</a>
+to automatically identify systems that require security fixes.</p>
+<p>This document explains why SBOM metadata for all constituent <em>components</em> should be embedded in all
+<em>firmware</em>, what should be included in it, <strong>and</strong> how it should be used as part of a larger
+<em>platform SBOM</em> that is useful to end-users.</p>
+<p>The purpose of this document is to present a set of guidelines and best practices for vendors of
+firmware to provide Software Bill of Materials (SBOM) information to their clients and customers,
+to aid in vulnerability detection and license management.</p>
+<p>With these sets of recommendations we feel sure that the resulting firmware SBOM will be useful to
+security teams and end-users alike.
+This would greatly benefit the entire firmware ecosystem and make the global supply chain measurably
+safer.</p>
+</section>
+<section id="definition-of-terms">
+<h3><span class="section-number">3.2. </span>Definition of Terms<a class="headerlink" href="#definition-of-terms" title="Link to this heading">¶</a></h3>
+<p>This document assumes a working knowledge of terminology related to firmware, and of software
+concepts such as “libraries” and “compilers”.
+The terms defined in this glossary may appear in italics as a reminder that they are being used as
+defined here.</p>
+<p>Readers may be expecting to see terms like “IBV” (Independent BIOS Vendor), “ODM” (Original Design
+Manufacturer), “IFV” (Independent Firmware Vendor) and “OEM” (Original Equipment Manufacturer),
+but this document mostly avoids those terms.
+This is because those entities may, at any given moment and in any given commercial arrangement,
+be acting as <em>component vendors</em>, <em>firmware vendors</em> or <em>platform vendors</em> in the context of this document.</p>
+<p>The keywords “<strong>MUST</strong>”, “<strong>MUST NOT</strong>”, “<strong>REQUIRED</strong>”, “<strong>SHALL</strong>”, “<strong>SHALL NOT</strong>”, “<strong>SHOULD</strong>”,
+“<strong>SHOULD NOT</strong>”, “<strong>RECOMMENDED</strong>”,  “<strong>MAY</strong>”, and “<strong>OPTIONAL</strong>” in this document should be
+interpreted as described in <a class="reference external" href="https://www.rfc-editor.org/rfc/rfc2119">RFC 2119</a>.</p>
+<dl class="simple glossary">
+<dt id="term-SBOM">SBOM<a class="headerlink" href="#term-SBOM" title="Link to this term">¶</a></dt><dd><p>Software Bill of Materials: A formal document which can be used to articulate what components
+are contained within a binary deliverable, and who is responsible for each part.</p>
+</dd>
+<dt id="term-Component">Component<a class="headerlink" href="#term-Component" title="Link to this term">¶</a></dt><dd><p>Any identifiable, discrete element of a firmware, including but not limited to any item that
+can be removed from, replaced in or added to a file volume or archive.
+This includes, but is not limited to, PE files, PEIMs, CPU microcodes, CMSE/PSP, FSP/AGESA,
+EC and OptionROMs – but <strong>SHOULD NOT</strong> include encryption keys or source code references.
+Each component may be provided as a precompiled binary by a <em>component vendor</em> to a
+<em>firmware vendor</em>, or it may be built from an independent source code tree by the <em>firmware vendor</em>.</p>
+</dd>
+<dt id="term-Component-SBOM">Component SBOM<a class="headerlink" href="#term-Component-SBOM" title="Link to this term">¶</a></dt><dd><p>A SBOM for a single <em>component</em>.</p>
+</dd>
+<dt id="term-Component-Vendor">Component Vendor<a class="headerlink" href="#term-Component-Vendor" title="Link to this term">¶</a></dt><dd><p>The party responsible for directly supplying a <em>component</em> for use by a <em>firmware vendor</em> in
+a firmware image.</p>
+</dd>
+<dt id="term-Firmware">Firmware<a class="headerlink" href="#term-Firmware" title="Link to this term">¶</a></dt><dd><p>Complete firmware image, which typically comprises multiple <em>components</em>..</p>
+</dd>
+<dt id="term-Firmware-SBOM">Firmware SBOM<a class="headerlink" href="#term-Firmware-SBOM" title="Link to this term">¶</a></dt><dd><p>The SBOM that represents all the <em>components</em> present in a single <em>firmware</em> and which could
+be generated in full or in part by combining <em>component</em> SBOMs.</p>
+</dd>
+<dt id="term-Firmware-Vendor">Firmware Vendor<a class="headerlink" href="#term-Firmware-Vendor" title="Link to this term">¶</a></dt><dd><p>The party responsible for building <em>firmware</em>, for use by the <em>platform vendor</em>.</p>
+</dd>
+<dt id="term-Platform-SBOM">Platform SBOM<a class="headerlink" href="#term-Platform-SBOM" title="Link to this term">¶</a></dt><dd><p>The SBOM that represents all the components in use on a real-world device.
+This may be equivalent to the <em>firmware SBOM</em> for single system firmware deployed on a device,
+or be a superset that includes metadata for multiple firmware (e.g. separate firmware for the
+system and for an attached touchpad or camera device).</p>
+</dd>
+<dt id="term-Platform-Vendor">Platform Vendor<a class="headerlink" href="#term-Platform-Vendor" title="Link to this term">¶</a></dt><dd><p>The party responsible for supplying a combined platform firmware image, typically comprising
+multiple firmware, for use on end-user hardware.</p>
+</dd>
+<dt id="term-Source-Code">Source Code<a class="headerlink" href="#term-Source-Code" title="Link to this term">¶</a></dt><dd><p>Text written in a program language (for example, C, assembly or Rust) that is compiled into
+binary object files and is not included verbatim in the firmware image.</p>
+</dd>
+</dl>
+</section>
+</section>
+<span id="document-embedding"></span><section id="embedding">
+<span id="chapter-embedding"></span><h2><span class="section-number">4. </span>Embedding<a class="headerlink" href="#embedding" title="Link to this heading">¶</a></h2>
+<section id="introduction">
+<h3><span class="section-number">4.1. </span>Introduction<a class="headerlink" href="#introduction" title="Link to this heading">¶</a></h3>
+<p>When we talk about “embedding the SBOM”, we refer to the general idea of having SBOM metadata for
+all <em>components</em> in a given <em>firmware</em> included into the firmware image itself, either by providing
+a <em>firmware SBOM</em> or just by ensuring all components are represented in multiple <em>component SBOMs</em>.</p>
+<p>Traditionally there has been pressure to keep firmware images as small as possible to minimize SPI
+storage space and to minimize the cost of the <em>Hardware Bill of Materials</em>.
+While this is a noble aim, sacrificing a few hundred bytes of space for an embedded SBOM has several
+advantages:</p>
+<ul class="simple">
+<li><p>The SBOM does not need to be verified against a binary deliverable, it can be assumed to be
+“part of” the existing source artefact itself.</p></li>
+<li><p>Vendors at any link in the supply chain that don’t care about or understand SBOMs do not “strip”
+the SBOM information.</p></li>
+<li><p>The <em>component SBOMs and/or firmware SBOMs</em> from all the factory burn-in <em>firmware</em> images can be
+combined into one generated public <em>platform SBOM</em> that can be used for contractual or compliance
+reasons, without the need to request <em>component</em> or <em>firmware</em> SBOMs separately from each
+<em>component vendor</em> and <em>firmware vendor</em>.</p></li>
+<li><p>Build-time automated embedding as part of CI/CD is recommended as part of the
+<a class="reference external" href="https://www.osfc.io/2023/talks/us-cyber-trust-mark-is-your-firmware-ready/">US Cyber Trust Mark</a> initiative.</p></li>
+<li><p>Some firmware build systems require the firmware blob and definition files to be put in a
+predefined place to generate a new firmware binary, which means non-embedded SBOM metadata may get
+out-of-sync with the blob.</p></li>
+</ul>
+<p>If the SBOM is not embedded as a build artifact, a firmware engineer could rebuild the firmware
+capsule and forget to also regenerate or replace the SBOM in the new archive because it is a separate
+process that is hard to verify was done.
+If the SBOM is part of the image itself and <em>automatically constructed</em> as part of the deliverable,
+then it is impossible to forget.
+Sending the capsule or manually dumped ROM image to a QA engineer means they can know with almost
+complete certainty what blobs the image was built with.
+Embedding the SBOM makes doing the “right” thing easy and doing the “wrong” thing hard.</p>
+</section>
+<section id="general-best-practices">
+<h3><span class="section-number">4.2. </span>General Best Practices<a class="headerlink" href="#general-best-practices" title="Link to this heading">¶</a></h3>
+<p>All <em>component vendors</em> <strong>SHOULD</strong> embed an SBOM in the component image, formatted as described below.
+They <strong>MAY</strong> also create a more detailed detached SBOM (for instance referencing internal issues or
+<em>source code</em> filenames) that <strong>MAY</strong> be provided to the <em>firmware vendor</em> under NDA.</p>
+<p><em>Firmware vendors</em> <strong>SHOULD</strong> ensure embedded SBOM metadata is included for every PE binary and all
+additional <em>components</em> included in the <em>firmware</em> formatted as described below.
+This <strong>MUST</strong> be done by:</p>
+<ul class="simple">
+<li><p>Including the SBOM for each <em>component</em> in a “defragmented” <em>firmware SBOM</em> created at build time, <strong>OR</strong></p></li>
+<li><p>Ensuring that each <em>component</em> contains embedded SBOM metadata, <strong>OR</strong></p></li>
+<li><p>Doing both of the above.</p></li>
+</ul>
+<p><em>Component</em> and <em>firmware</em> SBOMs <strong>SHOULD NOT</strong> reference any code or blobs which are not actually
+present, or which have been disabled in the system.</p>
+</section>
+<section id="embedded-sbom-formats">
+<h3><span class="section-number">4.3. </span>Embedded SBOM Formats<a class="headerlink" href="#embedded-sbom-formats" title="Link to this heading">¶</a></h3>
+<p><em>Firmware</em> and <em>component vendors</em> <strong>MUST</strong> use the <a class="reference external" href="https://datatracker.ietf.org/doc/rfc9393/">DTMF coSWID</a>
+binary format with CBOR encoding when directly embedding SBOM sections in firmware.
+This format was chosen due to the small compiled size of data compared to <a class="reference external" href="https://spdx.dev/use/specifications/">SPDX</a>
+(YAML or JSON) and <a class="reference external" href="https://www.iso.org/standard/65666.html">SWID</a> (XML), because the specification
+is freely available and because it can act as a superset format to both SPDX and CycloneDX.</p>
+</section>
+<section id="built-portable-executable-pe-binaries">
+<h3><span class="section-number">4.4. </span>Built Portable Executable (PE) Binaries<a class="headerlink" href="#built-portable-executable-pe-binaries" title="Link to this heading">¶</a></h3>
+<p>Most <em>components</em> in a typical <em>firmware</em> are compiled from <em>source code</em> and linked into PE binaries.
+These can be considered components whose vendor is the <em>firmware vendor</em>.</p>
+<p>The <em>firmware vendor</em> <strong>SHOULD</strong> ensure that the SBOM metadata is automatically built and verified
+at compile time and then added to the PE binary (in the <code class="docutils literal notranslate"><span class="pre">.sbom</span></code> COFF section), placed directly in
+the “defragmented” <em>firmware SBOM</em> (see below), or both.
+If for any reason this is not done automatically at compile time, the <em>firmware vendor</em> still <strong>MUST</strong>
+ensure the SBOM is included in the binary <code class="docutils literal notranslate"><span class="pre">.sbom</span></code> COFF section or the “defragmented” <em>firmware SBOM</em>,
+as required above.</p>
+<p>For Tianocore/EDK2 firmware, there is an <a class="reference external" href="https://github.com/hughsie/uswid-uefi-example">example</a>
+showing how to supplement the information in the <code class="docutils literal notranslate"><span class="pre">.inf</span></code> file with per-component and per-platform
+overrides.
+More specific recommendations on how to include additional artifacts into the <code class="docutils literal notranslate"><span class="pre">.sbom</span></code> section have
+not been made as this will be heavily influenced by the existing proprietary build system and tools
+used to build the image.</p>
+<p>In the case where there is no natural place to store the <em>component SBOM</em>, it <strong>SHOULD</strong> be included
+as a per-volume metadata section. In this case it <strong>MUST</strong> include a uSWID magic header, as described
+in <a class="reference internal" href="#components-that-are-not-portable-executables-pe">Components that are not Portable Executables (PE)</a> below.</p>
+</section>
+<section id="precompiled-portable-executable-pe-binaries">
+<h3><span class="section-number">4.5. </span>Precompiled Portable Executable (PE) Binaries<a class="headerlink" href="#precompiled-portable-executable-pe-binaries" title="Link to this heading">¶</a></h3>
+<p><em>Firmware vendors</em> do not have to compile all the PE binaries in the EFI volume from <em>source code</em>.
+They may get pre-compiled and pre-signed binaries from third-party <em>component vendors</em>.
+<em>Component vendors</em> <strong>SHOULD</strong> include the coSWID SBOM metadata for these components in a <code class="docutils literal notranslate"><span class="pre">.sbom</span></code>
+<a class="reference external" href="https://learn.microsoft.com/en-us/windows/win32/debug/pe-format">COFF</a> section which can be easily
+included at link time.
+These binaries <strong>MUST NOT</strong> use the magic header of uSWID (described below) as the PE header can be
+parsed for the correct offset of the section.</p>
+<p>An additional benefit of including the SBOM in a COFF section is that it is verified by the existing
+<a class="reference external" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/install/authenticode">Authenticode digital signature</a>.</p>
+<p>If a <em>firmware vendor</em> uses a PE binary which does not have this embedded SBOM metadata, the
+<em>firmware vendor</em> <strong>MUST</strong> ensure SBOM metadata for the binary is present in a “defragmented”
+firmware SBOM, as described below.</p>
+</section>
+<section id="components-that-are-not-portable-executables-pe">
+<h3><span class="section-number">4.6. </span>Components that are not Portable Executables (PE)<a class="headerlink" href="#components-that-are-not-portable-executables-pe" title="Link to this heading">¶</a></h3>
+<p>When embedding SBOM metadata into any binary that is not a Portable Executable  (PE),
+the <em>component vendor</em> <strong>MUST</strong> use the <a class="reference external" href="https://github.com/hughsie/python-uswid#coswid-with-uswid-header">discoverable uSWID header</a>
+so that software can easily discover the embedded SBOM.
+The 25-byte uSWID header is listed below:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>uint8_t[16]   magic, &quot;\x53\x42\x4F\x4D\xD6\xBA\x2E\xAC\xA3\xE6\x7A\x52\xAA\xEE\x3B\xAF&quot;
+uint8_t       header version, typically 0x03
+uint16_t      little-endian header length, typically 0x19
+uint32_t      little-endian payload length
+uint8_t       flags
+                0x00: no flags set
+                0x01: compressed payload
+uint8_t       payload compression type
+                0x00: none
+                0x01: zlib
+                0x02: lzma
+</pre></div>
+</div>
+<p>The header length <strong>MAY</strong> be increased for alignment reasons (e.g. to 0x100 bytes), and in this case
+the additional header padding <strong>MUST</strong> be <code class="docutils literal notranslate"><span class="pre">NUL</span></code> bytes.</p>
+<p>The uSWID payload <strong>SHOULD</strong> be compressed with either zlib or LZMA, and a firmware image containing
+the binary <strong>SHOULD</strong> <a class="reference external" href="https://github.com/hughsie/python-uswid/pull/58">pass validation</a> using
+<code class="docutils literal notranslate"><span class="pre">uswid</span></code>, for example:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ uswid --load firmware.bin --validate
+Found USWID header at offset: 0x18000
+Validation problems:
+dd4bbe2e40ba          component: No software name (uSWID &gt;= v0.4.7)
+dd4bbe2e40ba             entity: Invalid regid http://www.hughsie.com,   should be DNS name hughsie.com (uSWID &gt;= v0.4.7)
+dd4bbe2e40ba             entity: No entity marked as TagCreator (uSWID &gt;= v0.4.7)
+dd4bbe2e40ba            payload: No SHA256 hash in FSPS (uSWID &gt;= v0.4.7)
+dd4bbe2e40ba             link: Has no LICENSE (uSWID &gt;= v0.4.7)
+dd4bbe2e40ba             link: Has no COMPILER (uSWID &gt;= v0.4.7)
+</pre></div>
+</div>
+<p>Although there are many tools for the distribution of the <em>firmware SBOM</em> to end-users, fewer tools
+exist to embed SBOMs into binary blobs, or to extract and merge SBOM components to build a
+<em>firmware SBOM</em> or <em>platform SBOM</em>. The <a class="reference external" href="https://github.com/hughsie/python-uswid">python-uswid</a>
+project is one such tool.</p>
+</section>
+<section id="defragmented-firmware-sbom">
+<h3><span class="section-number">4.7. </span>Defragmented firmware SBOM<a class="headerlink" href="#defragmented-firmware-sbom" title="Link to this heading">¶</a></h3>
+<p>A firmware image can contain a “defragmented” top-level <em>firmware SBOM</em> with a uSWID header,
+produced at build time. If each <em>component</em> in the image has uSWID metadata, coSWID data in PE/COFF
+<code class="docutils literal notranslate"><span class="pre">.sbom</span></code> sections and/or file volumes with uSWID metadata, the <em>firmware vendor</em> <strong>MAY</strong> omit this
+<em>firmware SBOM</em>. If not, the <em>firmware vendor</em> <strong>MUST</strong> include it.</p>
+<p>If the <em>firmware SBOM</em> is present:</p>
+<ul class="simple">
+<li><p>It <strong>MUST</strong> contain all <em>component SBOMs</em> present in the image.
+This requirement is to ensure that tools do not need to combine and deduplicate <em>component SBOMs</em>
+with the <em>firmware SBOM</em> to provide all available information.</p></li>
+<li><p>It <strong>SHOULD</strong> be compressed.</p></li>
+<li><p>The components <strong>MAY</strong> also have <em>component SBOMs</em> as described in this document, to allow them to
+be analyzed in isolation.</p></li>
+</ul>
+</section>
+</section>
+<span id="document-metadata"></span><section id="metadata-provided">
+<span id="chapter-metadata"></span><h2><span class="section-number">5. </span>Metadata Provided<a class="headerlink" href="#metadata-provided" title="Link to this heading">¶</a></h2>
+<section id="introduction">
+<h3><span class="section-number">5.1. </span>Introduction<a class="headerlink" href="#introduction" title="Link to this heading">¶</a></h3>
+<p>The purpose of an SBOM is to tell the end-user what components make up the software deliverable,
+and to give them information on where it was retrieved from or built.
+The questions end-users need to be able to answer are “what version of OpenSSL is included, and
+where did it come from” and “do I trust all the companies contributing code and binaries to this image”.
+Answering the <em>what</em> and <em>who</em> in a standardized way also allows us to use other specifications such as VEX.</p>
+<p>In this section we use the term “SBOM component” to refer to a single ingredient within an SBOM
+(in a coSWID SBOM, this is a single tag).</p>
+<p>Each SBOM component <strong>SHOULD</strong> describe either:</p>
+<ul class="simple">
+<li><p>A single <em>component</em>, as defined in the glossary, or</p></li>
+<li><p>An individually identifiable part of a <em>component</em> that has security and/or licensing implications,
+for example an image loading library used by a PE binary, or</p></li>
+<li><p>Something that has security and/or licensing implications and was used to produce a <em>component</em>
+but is not present in the <em>component</em> itself, for example a compiler used to produce a PE binary, or</p></li>
+<li><p>Any kind of defined logical component, for example “optional features” or “value add” options that
+may be matched from a VEX file (see below).</p></li>
+</ul>
+<p>Each <em>component</em> <strong>MUST</strong> be represented by an SBOM component in its <em>component SBOM</em>, or the
+<em>firmware SBOM</em> if the component does not have its own SBOM.
+Libraries, compilers etc. <strong>SHOULD</strong> be represented by SBOM components (see the <a class="reference internal" href="#component-relationships">Component Relationships</a>
+section below for more on this).
+Thus, a <em>component SBOM</em> or <em>firmware SBOM</em> <strong>MUST</strong> contain at least one tag, and <strong>MAY</strong> contain more.</p>
+<p>For components or relationships that cannot currently be disclosed for legal reasons, vendors <strong>MAY</strong>
+use the literal text <code class="docutils literal notranslate"><span class="pre">REDACTED</span></code> in place of the correct string value.
+This is intended as a <strong>temporary</strong> measure while contracts or NDAs are renegotiated.
+Any SBOM components with <code class="docutils literal notranslate"><span class="pre">REDACTED</span></code> text <strong>MAY</strong> be marked as incomplete and <strong>MUST</strong> fail validation.</p>
+</section>
+<section id="required-attributes">
+<h3><span class="section-number">5.2. </span>Required Attributes<a class="headerlink" href="#required-attributes" title="Link to this heading">¶</a></h3>
+<p>Each tag:</p>
+<ul class="simple">
+<li><p><strong>MUST</strong> have an identifier in the form of a GUID.
+See the <a class="reference internal" href="#identifier">Identifier</a> section below for more details.</p></li>
+<li><p><strong>MUST</strong> have a non-zero length descriptive name, e.g. “CryptoDxe”, and <strong>SHOULD NOT</strong> include a file extension as this is already included in the SWID payload section.</p></li>
+<li><dl class="simple">
+<dt><strong>MUST</strong> have at least one entity entry and <strong>SHOULD</strong> have more than one, if more than one legal entity is involved in its creation, maintenance and/or distribution.</dt><dd><ul>
+<li><p>One entity <strong>MUST</strong> have the tag-creator role.</p></li>
+<li><p>One entity <strong>MUST</strong> have the software-creator role, and it <strong>MAY</strong> be the same entity as the one specified in tag-creator.
+See the <a class="reference internal" href="#vendor-entity">Vendor Entity</a> section below for details.</p></li>
+<li><p>In specifying entity roles, vendors <strong>SHOULD</strong> be careful not to make business relationships public that are not already in the public domain.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p><strong>MUST</strong> have a version, which <strong>SHOULD</strong> be a semantic version like <code class="docutils literal notranslate"><span class="pre">1.2.3</span></code>.</p></li>
+<li><p><strong>SHOULD</strong> have a revision if the component has been modified by downstream patches. If supplied the revision <strong>SHOULD</strong> have the form``{release}.{dist}`` . The <code class="docutils literal notranslate"><span class="pre">release</span></code> is an unsigned integer, and <code class="docutils literal notranslate"><span class="pre">dist</span></code> is a lowercase short vendor name, e.g. <code class="docutils literal notranslate"><span class="pre">`1.hughski</span></code> or <code class="docutils literal notranslate"><span class="pre">999.redhat</span></code>.</p></li>
+<li><dl class="simple">
+<dt><strong>MUST</strong> have a file hash that is generated from all the source files, if it is a binary built from <em>source code</em> or other constituent parts. This <strong>MUST</strong> be either a SHA-1 or SHA-256 hash.</dt><dd><ul>
+<li><p>This is what uSWID calls a “colloquial version.”</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><strong>SHOULD</strong> have a source control tree hash which <strong>MUST</strong> be either a SHA-1 or SHA-256 hash (e.g. the output from <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">describe</span></code>), if it is a binary built from <em>source code</em> under source control.</dt><dd><ul>
+<li><p>This is what uSWID calls an “edition.”</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p><strong>MAY</strong> or <strong>MUST</strong> include one or more link entries expressing relationship(s) to another SBOM component. See the <a class="reference internal" href="#component-relationships">Component Relationships</a> section below for details, including when link entries are <strong>REQUIRED</strong> and when they are <strong>OPTIONAL</strong>.</p></li>
+</ul>
+<p>The file hash <strong>SHOULD</strong> include the hashes of the <em>source code</em> files used to construct the binary, such as <code class="docutils literal notranslate"><span class="pre">.c</span></code> and <code class="docutils literal notranslate"><span class="pre">.h</span></code> files.
+Any library statically-linked with the PE binary <strong>SHOULD</strong> be included as an additional SBOM component.</p>
+</section>
+<section id="identifier">
+<h3><span class="section-number">5.3. </span>Identifier<a class="headerlink" href="#identifier" title="Link to this heading">¶</a></h3>
+<p>In some cases, the most obvious identifier to use for the SBOM component is already in a GUID form – for instance using the UEFI GUID defined in an official specification or reference implementation.
+In other cases, like GCC (where there is no GUID defined), vendors <strong>MUST</strong> use a <code class="docutils literal notranslate"><span class="pre">swid:</span></code> prefix to generate a GUID that is linked within the object.
+Using a GUID is deliberate because it can obscure internal references, and can be encoded as a 128-bit number in coSWID.</p>
+<p>Example component IDs could include:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">swid:intel-microcode-706E5-80</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">swid:gcc</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">f43cae5a-baea-5023-bc90-3a83cd4785cc</span> <span class="pre">which</span> <span class="pre">is</span> <span class="pre">UUID(DNS,</span> <span class="pre">“gcc”)</span></code></p></li>
+</ul>
+<p>Some of this information is already present in projects such as EDK2 in the various <code class="docutils literal notranslate"><span class="pre">.inf</span></code> files.</p>
+<p><em>Firmware vendors</em> and <em>component vendors</em> <strong>SHOULD</strong> consult with any upstream projects before deciding identifier GUIDs.</p>
+<p>Forked components modified by the <em>firmware vendor</em> <strong>MUST</strong> have an identifier different from the upstream component identifier.</p>
+<p>The identifier GUID:</p>
+<ul class="simple">
+<li><p><strong>SHOULD NOT</strong> include the component version, file or tree hash or revision.</p></li>
+<li><p><strong>MAY</strong> allow comparing some components against SBOMs from different vendors.</p></li>
+</ul>
+</section>
+<section id="vendor-entity">
+<h3><span class="section-number">5.4. </span>Vendor Entity<a class="headerlink" href="#vendor-entity" title="Link to this heading">¶</a></h3>
+<p>An “entity” describes a party responsible for the creation, maintenance, and/or distribution of a firmware or component.
+An entity can perform one or more roles (e.g. creator, maintainer and distributor), and multiple entities (even with the same role) can be defined for each component.</p>
+<p>For instance, Intel FSP is created by Intel, maintained by Intel, and distributed by Intel.
+A modified DXE might originally be created by Intel in EDK2, but then be modified and maintained by AMI and distributed by Lenovo.
+In this case, the component for the FSP would have only one entity entry, but the component for the DXE would have three entity entries.</p>
+<p>For each entity entry:</p>
+<ul class="simple">
+<li><p>The name <strong>MUST</strong> be the legal or common-use name of the open-source project, the component vendor, the firmware vendor, or the platform vendor.</p></li>
+<li><p>The registration ID <strong>MUST</strong> be the DNS name of the named legal entity, or the DNS name of the upstream project URL in the case of open-source projects.</p></li>
+</ul>
+</section>
+<section id="component-relationships">
+<h3><span class="section-number">5.5. </span>Component Relationships<a class="headerlink" href="#component-relationships" title="Link to this heading">¶</a></h3>
+<p>SBOM component links are used to supply additional information about how components relate to each other.
+They also include any required licensing information, statically linked libraries and links to additional resources.
+Libraries that may be matched from a VEX file (for instance, where a third-party library has previously security vulnerabilities) <strong>SHOULD</strong> be included as a component, but other internal libraries <strong>MAY</strong> be omitted.
+SBOM components <strong>MAY</strong> use multiple links, even of the same relationship type.</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt>SBOM components representing open-source software <strong>MUST</strong> include one or more license link(s) indicating all licenses that apply.</dt><dd><ul>
+<li><p>The URL for each license link <strong>MUST</strong> be the SPDX license URL, e.g.: <code class="docutils literal notranslate"><span class="pre">https://spdx.org/licenses/LGPL-2.1-or-later.html</span></code></p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">license</span></code> relationship type <strong>MUST</strong> be used.</p></li>
+<li><p>All open-source code <strong>SHOULD</strong> be identified with its own SBOM component to allow verification of license compliance.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>SBOM components representing non-open-source software <strong>SHOULD</strong> include one or more license link(s) indicating all licenses that apply.</dt><dd><ul>
+<li><p>The URL for each license link <strong>MUST</strong> be a public webpage with the full text of the proprietary license.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">license</span></code> relationship type <strong>MUST</strong> be used.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>SBOM components representing compiled binaries <strong>SHOULD</strong> reference SBOM components representing the compiler and linker used to build the binary where possible.</dt><dd><ul>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">see-also</span></code> relationship type <strong>MUST</strong> be used, and the <code class="docutils literal notranslate"><span class="pre">swid</span></code>-prefixed URL <strong>MUST</strong> be an existing component identifier defined in the component or firmware SBOM.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>SBOM components representing compiled binaries <strong>SHOULD</strong> reference SBOM components representing libraries that are linked into the binary and that may be referenced in VEX documents (see below).</dt><dd><ul>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">requires</span></code> relationship type <strong>MUST</strong> be used, and the <code class="docutils literal notranslate"><span class="pre">swid</span></code>-prefixed URL <strong>MUST</strong> point to an existing component in the SBOM.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>SBOM components <strong>MAY</strong> include a link specifying the source URL where they can be downloaded. e.g. <code class="docutils literal notranslate"><span class="pre">https://github.com/intel/FSP/AmberLakeFspBinPkg</span></code></dt><dd><ul>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">installationmedia</span></code> relationship type <strong>MUST</strong> be used.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+</section>
+<span id="document-information"></span><section id="information-flow">
+<span id="chapter-information"></span><h2><span class="section-number">6. </span>Information Flow<a class="headerlink" href="#information-flow" title="Link to this heading">¶</a></h2>
+<section id="introduction">
+<h3><span class="section-number">6.1. </span>Introduction<a class="headerlink" href="#introduction" title="Link to this heading">¶</a></h3>
+<p>The figure below shows the possible flows of SBOM information from the <em>component vendor(s)</em>,
+<em>firmware vendor(s)</em> and/or <em>platform vendor</em> to the end-user.
+VEX data (see below) is used to notify the end user about security issues of components referenced
+by the SBOM.</p>
+<img alt="_images/sbom-flow.png" src="_images/sbom-flow.png" />
+<p>Depending on existing business relationships, the <em>firmware vendor</em> (the ODM) may take on some of
+the responsibilities of the platform vendor (the OEM) or the <em>component vendor</em> (the IBV).</p>
+<p>Dumping the SPI contents using an external SPI programmer or OS interface allows the end-user to
+extract a “current” firmware SBOM.
+This allows analyzing the image without having access to a public SBOM provided by the platform
+vendor or a vendor neutral firmware provider like the <a class="reference external" href="https://fwupd.org/">Linux Vendor Firmware Service</a> (“LVFS”).</p>
+<p>To comply with Executive Order 14028, OEM vendors <strong>SHOULD</strong> also publish either the SPDX or
+CycloneDX SBOM export as a downloadable file on the public device webpage.
+The SHA-256 checksum of the generated SBOM <strong>SHOULD</strong> be used as the unique collection ID for the
+component and firmware SBOMs.
+This enables the SBOM to be found using a search engine even if the original OEM has been renamed
+or the device HTML URI has been modified.</p>
+<section id="using-vex-rules">
+<h4><span class="section-number">6.1.1. </span>Using VEX Rules<a class="headerlink" href="#using-vex-rules" title="Link to this heading">¶</a></h4>
+<p>Vulnerability Exploitability eXchange (VEX) allows a <em>component vendor</em> to assert the status of a
+specific vulnerability in a particular firmware.
+VEX can have any of the following “status” values for each component:</p>
+<blockquote>
+<div><dl class="simple">
+<dt><strong>Not affected</strong></dt><dd><p>No remediation is required regarding this vulnerability.</p>
+</dd>
+<dt><strong>Not affected</strong></dt><dd><p>No remediation is required regarding this vulnerability.</p>
+</dd>
+<dt><strong>Affected</strong></dt><dd><p>Actions are recommended to remediate or address this vulnerability.</p>
+</dd>
+<dt><strong>Fixed</strong></dt><dd><p>Represents that these product versions contain a fix for the vulnerability.</p>
+</dd>
+<dt><strong>Under Investigation</strong></dt><dd><p>It is not yet known whether these product versions are affected by the vulnerability.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>Only the entity with the <em>source code</em> tree and the config files used to build it (usually the IBV
+or ODM) has all the information required to know whether a given EFI binary is affected by a specific
+vulnerability.</p>
+<p>If our aim is to find out if a specific firmware is vulnerable to a specific security issue,
+here are only three ways to solve this without access to a complete SBOM:</p>
+<ul class="simple">
+<li><p>The end-user asks the <em>component vendor</em>, who finds the firmware version, checks out the
+<em>source code</em> for that revision, then looks for affected code, and replies with the answer.</p></li>
+<li><p>The <em>component vendor</em> proactively passes detailed vulnerability status and remediation info to
+the immediate downstream supply chain partner, who then in turn proactively passes this down to
+each customer.</p></li>
+<li><p>The <em>component vendor</em> shares the code and the config to the customer and assumes the customer
+can work it out themselves.</p></li>
+</ul>
+<p>We consider these ways to be clearly unsatisfactory.
+Therefore, both <em>component vendors</em> and <em>platform vendors</em> <strong>SHOULD</strong> upload the SBOM to a trusted
+neutral entity, allowing multiple customers and end-users to query the information.
+The neutral entity <strong>MAY</strong> also process additional trusted VEX data directly from <em>component vendors</em>,
+which allows <em>firmware</em> to automatically be marked as <em>affected</em> or <em>not affected</em> without direct
+involvement of the <em>firmware vendor</em>.</p>
+<p>Vendors writing VEX rules MUST use the same identifier as used in the SBOM.
+VEX product IDs are specified using <a class="reference external" href="https://en.wikipedia.org/wiki/Persistent_uniform_resource_locator">PURL</a>,
+and the GUID <strong>MUST</strong> be used as the component name.
+Where a semantic version is required it <strong>MAY</strong> also be specified.</p>
+<p>For example:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">pkg:dca533ab-2c1f-4327-9b2b-09ac19533404</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pkg:dca533ab-2c1f-4327-9b2b-09ac19533404&#64;15.35.2039</span></code></p></li>
+</ul>
+<p>Further details about using Vulnerability Exploitability eXchange (VEX) standards such as OpenVEX
+with embedded firmware SBOMs will be provided in the future.</p>
+</section>
+</section>
+</section>
+<span id="document-appendix"></span><section id="appendix">
+<span id="chapter-appendix"></span><h2><span class="section-number">7. </span>Appendix<a class="headerlink" href="#appendix" title="Link to this heading">¶</a></h2>
+<section id="external-sbom-metadata">
+<h3><span class="section-number">7.1. </span>External SBOM Metadata<a class="headerlink" href="#external-sbom-metadata" title="Link to this heading">¶</a></h3>
+<p>This document strongly encourages vendors to embed the SBOM metadata into the respective binaries, but there are two situations where externally referenced SBOM metadata would be allowed:</p>
+<ul class="simple">
+<li><p>Where the binary is loaded onto critically space-constrained devices, for example microcode that is loaded into the processor itself.</p></li>
+<li><p>Where only later newer versions of the component have embedded SBOM metadata, and backwards compatibility is required with older revisions.</p></li>
+</ul>
+<p>In these cases, the <em>component vendor</em> <strong>MUST</strong> provide “detached metadata” from the same source (or in the same archive file) as is used to distribute the immutable blob.</p>
+<p>As the SBOM metadata is detached, vendors <strong>MUST</strong> ensure that the files do not get “out of sync” and are updated at the same time in the firmware source tree.
+Detached metadata <strong>MUST</strong> <a class="reference external" href="https://github.com/hughsie/python-uswid/#use-cases">always contain the SHA256 hash value of the binary</a> as evidence to allow validation and <strong>MAY</strong> be signed using a detached signature if the archive is not already signed.
+The public key <strong>SHOULD</strong> be distributed on a keyserver or company website for verification.</p>
+</section>
+<section id="wasted-space-concerns">
+<h3><span class="section-number">7.2. </span>Wasted Space Concerns<a class="headerlink" href="#wasted-space-concerns" title="Link to this heading">¶</a></h3>
+<p>Some vendors have expressed concerns about “wasted” space from including the SBOM data in the binary image.
+For source components such as CPU microcode, a single <em>component</em> and vendor <em>entity</em> would use an additional ~350 bytes (zlib compressed coSWID), compared to 48kB for the average EFI binary and 25kb for a typical vendor BGRT “splash” logo.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">uswid</span></code> command can automatically <a class="reference external" href="https://github.com/hughsie/python-uswid#generating-test-data">generate</a> a complete “worst case” platform SBOM with 1,000 plausible components.
+This SBOM requires an additional 140kB of SPI flash space (uncompressed coSWID), or 60kB when compressed with LZMA.
+For reference, the average free space in an Intel Flash ROM BIOS partition is 5.26Mb, where “free space” is defined as a greater than 100KiB stream of consecutive 0xFF’s after the first detected EFI file volume.
+Adding the SBOM as embedded metadata would use 1.1% of the available free space.
+Other firmware ecosystems such as Coreboot also <a class="reference external" href="https://doc.coreboot.org/sbom/sbom.html">now include SBOM generation</a> as part of the monolithic image.</p>
+</section>
+<section id="getting-the-runtime-sbom">
+<h3><span class="section-number">7.3. </span>Getting the Runtime SBOM<a class="headerlink" href="#getting-the-runtime-sbom" title="Link to this heading">¶</a></h3>
+<p>The ACPI <code class="docutils literal notranslate"><span class="pre">SBOM</span></code> ACPI table may be used in the future to return the coSWID formatted binary SBOM data from any device exporting an ACPI callable interface.
+Further details will be provided when the SBOM table has been implemented.</p>
+<p>If the platform allows direct access to the system SPI device, then the entire firmware image can be dumped to a local file and analyzed by tools such as <code class="docutils literal notranslate"><span class="pre">uswid</span></code>.</p>
+</section>
+<section id="converting-the-sbom">
+<h3><span class="section-number">7.4. </span>Converting the SBOM<a class="headerlink" href="#converting-the-sbom" title="Link to this heading">¶</a></h3>
+<p>The embedded SBOM <strong>SHOULD</strong> be converted it into one or more SBOM export formats before publication.</p>
+<p>This can be achieved easily using tools such as <code class="docutils literal notranslate"><span class="pre">uswid</span></code>.
+For example, this can be used to produce two JSON files in CycloneDX and SPDX formats from the platform image:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ uswid --load rom.bin --save cyclonedx-bom.json
+$ uswid --load rom.bin --save spdx.json
+</pre></div>
+</div>
+</section>
+<section id="signing-the-sbom">
+<h3><span class="section-number">7.5. </span>Signing the SBOM<a class="headerlink" href="#signing-the-sbom" title="Link to this heading">¶</a></h3>
+<p>The embedded SBOM <strong>MAY</strong> be signed, and <strong>MAY</strong> also be included in the firmware checksum.
+If the firmware component is signed then the SBOM <strong>SHOULD</strong> be included in to the signature.
+The signing step is optional because a malicious silicon provider can typically do much worse things (e.g. adding or replacing a DXE binary) than modify the SBOM metadata.</p>
+</section>
+<section id="using-the-lvfs">
+<h3><span class="section-number">7.6. </span>Using the LVFS<a class="headerlink" href="#using-the-lvfs" title="Link to this heading">¶</a></h3>
+<p>When firmware is uploaded to the LVFS it automatically extracts all available SBOM metadata and generates <a class="reference external" href="https://fwupd.org/lvfs/devices/component/64327/swid">a HTML page</a> with SPDX, SWID and CycloneDX download links that can be used for compliance purposes.
+The LVFS <strong>MAY</strong> allow vendors to upload firmware or platform SBOMs without uploading the firmware binary.
+Other services like Windows Update may offer this service in the future.</p>
+<p>The VEX “trusted neutral entity” <strong>MAY</strong> also be the LVFS, even for firmware updates not distributed by the LVFS.
+Uploading VEX data requires vendors to register <a class="reference external" href="https://lvfs.readthedocs.io/en/latest/apply.html">for a LVFS vendor account</a> which is available at no cost.</p>
+</section>
+</section>
+</div>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="#">Firmware Embedded SBOM Specification</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=open-source-firmware&repo=sbom&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="#document-acknowledgements">1. Acknowledgements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#document-revhistory">2. Revision History</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#document-introduction">3. Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#document-embedding">4. Embedding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#document-metadata">5. Metadata Provided</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#document-information">6. Information Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#document-appendix">7. Appendix</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Richard Hughes <richard@hughsie.com>.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
