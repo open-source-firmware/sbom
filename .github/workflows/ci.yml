@@ -45,12 +45,6 @@ jobs:
         path: |
           build/latex/sbom-specification-*.pdf
 
-    - name: deploy
-      uses: peaceiris/actions-gh-pages@v4
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./build/singlehtml
-
     - name: release
       uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/')
